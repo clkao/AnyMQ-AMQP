@@ -24,47 +24,52 @@ sub BUILD {
     $rf->load_xml_spec('fixed_amqp0-8.xml');
 
     my $cv = AE::cv;
-    $rf->connect((map { $_ => $self->$_ }
-                       qw(host port user pass vhost)),
-                 on_success => sub {
-                     $rf->open_channel(
-                         on_success => sub {
-                             my $channel = shift;
-                             $self->_rf_channel($channel);
-                             $channel->qos();
-                             $channel->declare_queue(
-                                 exclusive => 1,
-                                 on_success => sub {
-                                     my $method = shift;
-                                     my $queue = $method->method_frame->queue;
-                                     $self->_rf_queue($queue);
-                                     $channel->consume(queue => $queue,
-                                                       no_ack => 1,
-                                                       on_success => sub {
-                                                           $cv->send('init');
-                                                       },
-                                                       on_consume => sub {
-                                                           my $frame = shift;
-                                                           my $payload = $frame->{body}->payload;
-                                                           my $reply_to = $frame->{header}->reply_to;
-                                                           next if $reply_to && $reply_to eq $self->_queue;
-                                                           my $topic = $frame->{deliver}->method_frame->routing_key;
-                                                           $self->topics->{$topic}->publish($payload);
-
-                                                       },
-                                                       on_failure => $cv,
-                                                   );
-                                 },
-                                 on_failure => $cv,
-                             ),
-                         },
-                         on_failure => $cv,
-                     );
-                     },
-                 on_failure => $cv,
-             );
+    $rf->connect(
+        (map { $_ => $self->$_ }
+             qw(host port user pass vhost)),
+        on_success => sub {
+            $rf->open_channel(
+                on_success => sub {
+                    my $channel = shift;
+                    $self->_rf_channel($channel);
+                    $channel->qos();
+                    $channel->declare_queue(
+                        exclusive => 1,
+                        on_success => sub {
+                            my $method = shift;
+                            my $queue = $method->method_frame->queue;
+                            $self->_rf_queue($queue);
+                            $channel->consume(queue => $queue,
+                                              no_ack => 1,
+                                              on_success => sub {
+                                                  $cv->send('init');
+                                              },
+                                              on_consume => $self->on_consume,
+                                              on_failure => $cv,
+                                          );
+                        },
+                        on_failure => $cv,
+                    ),
+                },
+                on_failure => $cv,
+            );
+        },
+        on_failure => $cv,
+    );
     $cv->recv;
 
+}
+
+sub on_consume {
+    my $self = shift;
+    sub {
+        my $frame = shift;
+        my $payload = $frame->{body}->payload;
+        my $reply_to = $frame->{header}->reply_to;
+        next if $reply_to && $reply_to eq $self->_queue;
+        my $topic = $frame->{deliver}->method_frame->routing_key;
+        $self->topics->{$topic}->publish($payload);
+    };
 }
 
 around 'new_topic' => sub {

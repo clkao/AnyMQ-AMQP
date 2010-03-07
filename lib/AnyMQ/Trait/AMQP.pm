@@ -3,6 +3,8 @@ use Moose::Role;
 
 use AnyEvent;
 use AnyEvent::RabbitMQ;
+use Net::RabbitFoot;
+use JSON;
 
 has host => (is => "ro", isa => "Str");
 has port => (is => "ro", isa => "Int");
@@ -17,13 +19,22 @@ has _rf => (is => "rw");
 has _rf_channel => (is => "rw");
 has _rf_queue => (is => "rw");
 
-sub BUILD {
+has cv => (is => "rw", isa => "AnyEvent::CondVar");
+
+AnyEvent::RabbitMQ->load_xml_spec(Net::RabbitFoot::default_amqp_spec());
+
+sub BUILD {}; after 'BUILD' => sub {
     my $self = shift;
 
-    my $rf = AnyEvent::RabbitMQ->new({timeout => 1, verbose => 0,});
-    $rf->load_xml_spec('fixed_amqp0-8.xml');
-
+    my $rf = AnyEvent::RabbitMQ->new(timeout => 1, verbose => 0);
+    $self->_rf($rf);
     my $cv = AE::cv;
+
+    # XXX: wrapped object with monadic method modifier
+    # my $channel = run_monad { $rf->connect(....)->open_channel()->return }
+    # my $queue = run_monad { $channel->declare_queue(....)->return }->method_frame->queue;
+    # run_monad { $channel->consume( ....) }
+
     $rf->connect(
         (map { $_ => $self->$_ }
              qw(host port user pass vhost)),
@@ -57,8 +68,7 @@ sub BUILD {
         on_failure => $cv,
     );
     $cv->recv;
-
-}
+};
 
 sub on_consume {
     my $self = shift;
@@ -66,21 +76,26 @@ sub on_consume {
         my $frame = shift;
         my $payload = $frame->{body}->payload;
         my $reply_to = $frame->{header}->reply_to;
-        next if $reply_to && $reply_to eq $self->_queue;
+        return if $reply_to && $reply_to eq $self->_rf_queue;
         my $topic = $frame->{deliver}->method_frame->routing_key;
-        $self->topics->{$topic}->publish($payload);
+        $self->topics->{$topic}->publish(JSON::from_json($payload));
     };
 }
 
-around 'new_topic' => sub {
-    my ($next, $self, @args) = @_;
-    my $topic = $self->$next(@args);
-    warn "topic: ".$topic->name;
-    $self->_rf_channel->bind_queue(
-        queue       => $self->_rf_queue,
-        routing_key => $topic->name,
-    );
-    return $topic;
+sub new_topic {
+    my ($self, $name) = @_;
+    AnyMQ::Topic->new_with_traits(
+        traits => ['AMQP'],
+        name => $name,
+        bus  => $self );
+}
+
+sub DEMOLISH {}; after 'DEMOLISH' => sub {
+    my $self = shift;
+    return unless $self->_rf;
+    my $q = AE::cv;
+    $self->_rf->close( on_success => $q );
+    $q->recv;
 };
 
 1;

@@ -78,7 +78,7 @@ sub on_consume {
         my $reply_to = $frame->{header}->reply_to;
         return if $reply_to && $reply_to eq $self->_rf_queue;
         my $topic = $frame->{deliver}->method_frame->routing_key;
-        $self->topics->{$topic}->publish(JSON::from_json($payload));
+        $self->topics->{$topic}->AnyMQ::Topic::publish(JSON::from_json($payload));
     };
 }
 

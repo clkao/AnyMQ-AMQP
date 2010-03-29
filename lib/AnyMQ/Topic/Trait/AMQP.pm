@@ -20,4 +20,13 @@ before publish => sub {
     ) for @events;
 };
 
+sub DEMOLISH {}; after 'DEMOLISH' => sub {
+    my $self = shift;
+    $self->bus->_rf_channel->unbind_queue(
+        queue       => $self->bus->_rf_queue,
+        routing_key => $self->name,
+        on_success  => $self->bus->cv,
+    );
+};
+
 1;

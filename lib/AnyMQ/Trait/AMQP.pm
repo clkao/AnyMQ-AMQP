@@ -83,10 +83,11 @@ sub on_consume {
 }
 
 sub new_topic {
-    my ($self, $name) = @_;
+    my ($self, $opt) = @_;
+    $opt = { name => $opt } unless ref $opt;
     AnyMQ::Topic->new_with_traits(
         traits => ['AMQP'],
-        name => $name,
+        %$opt,
         bus  => $self );
 }
 

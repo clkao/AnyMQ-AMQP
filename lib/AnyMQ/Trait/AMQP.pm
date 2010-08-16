@@ -1,9 +1,9 @@
 package AnyMQ::Trait::AMQP;
 use Moose::Role;
+use File::ShareDir;
 
 use AnyEvent;
 use AnyEvent::RabbitMQ;
-use Net::RabbitFoot;
 use JSON;
 
 has host => (is => "ro", isa => "Str");
@@ -21,7 +21,12 @@ has _rf_queue => (is => "rw");
 
 has cv => (is => "rw", isa => "AnyEvent::CondVar");
 
-AnyEvent::RabbitMQ->load_xml_spec(Net::RabbitFoot::default_amqp_spec());
+sub default_amqp_spec { #this is to avoid loading coro
+    my $dir = File::ShareDir::dist_dir("Net-RabbitFoot");
+    return "$dir/fixed_amqp0-8.xml";
+}
+
+AnyEvent::RabbitMQ->load_xml_spec(default_amqp_spec());
 
 sub BUILD {}; after 'BUILD' => sub {
     my $self = shift;

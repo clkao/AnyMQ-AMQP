@@ -35,7 +35,7 @@ sub BUILD {}; after 'BUILD' => sub {
 
     my $rf = AnyEvent::RabbitMQ->new(timeout => 1, verbose => 0);
     $self->_rf($rf);
-    my $cv = AE::cv;
+    my $cv = $self->cv(AE::cv);
 
     # XXX: wrapped object with monadic method modifier
     # my $channel = run_monad { $rf->connect(....)->open_channel()->return }

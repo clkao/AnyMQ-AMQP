@@ -29,7 +29,7 @@ is($bus->host, 'localhost');
 
 #$cv->recv;
 $bus->cv(AE::cv);
-my $test = $bus->topic('test_q');
+my $test = $bus->topic({ name => 'test_q', publisher_only => 0});
 $bus->cv->recv;
 
 my $q = AE::cv;
@@ -69,7 +69,7 @@ my ($ok, $msg) = @{$q->recv};
 ok($ok, $msg);
 
 $bus2->cv(AE::cv);
-my $test2 = $bus2->topic('test_q');
+my $test2 = $bus2->topic({name => 'test_q', publisher_only => 0});
 $bus2->cv->recv;
 
 my $client2 = $bus2->new_listener; $client2->subscribe($test2);

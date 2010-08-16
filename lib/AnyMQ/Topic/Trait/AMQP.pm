@@ -1,8 +1,11 @@
 package AnyMQ::Topic::Trait::AMQP;
 use Moose::Role;
 
+has publisher_only => (is => "ro", isa => "Bool");
+
 sub BUILD {}; after 'BUILD' => sub {
     my $self = shift;
+    return if $self->publisher_only;
     $self->bus->_rf_channel->bind_queue(
         queue       => $self->bus->_rf_queue,
         routing_key => $self->name,
@@ -22,6 +25,7 @@ before publish => sub {
 
 sub DEMOLISH {}; after 'DEMOLISH' => sub {
     my $self = shift;
+    return if $self->publisher_only;
     $self->bus->_rf_channel->unbind_queue(
         queue       => $self->bus->_rf_queue,
         routing_key => $self->name,

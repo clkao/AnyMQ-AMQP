@@ -5,6 +5,8 @@ use File::ShareDir;
 use AnyEvent;
 use AnyEvent::RabbitMQ;
 use JSON;
+use Try::Tiny;
+use Carp qw(croak);
 
 has host => (is => "ro", isa => "Str");
 has port => (is => "ro", isa => "Int");
@@ -83,7 +85,8 @@ sub on_consume {
         my $reply_to = $frame->{header}->reply_to;
         return if $reply_to && $reply_to eq $self->_rf_queue;
         my $topic = $frame->{deliver}->method_frame->routing_key;
-        $self->topics->{$topic}->AnyMQ::Topic::publish(JSON::from_json($payload));
+        try { $self->topics->{$topic}->AnyMQ::Topic::publish(JSON::from_json($payload)) }
+        catch { croak "failed to publsih: $_" };
     };
 }
 

@@ -101,9 +101,11 @@ sub new_topic {
 
 sub DEMOLISH {}; after 'DEMOLISH' => sub {
     my $self = shift;
+    my ($igd) = @_;
     return unless $self->_rf;
+    return if $igd;
     my $q = AE::cv;
-    $self->_rf->close( on_success => $q );
+    $self->_rf->close( on_success => $q, on_failure => $q );
     $q->recv;
 };
 

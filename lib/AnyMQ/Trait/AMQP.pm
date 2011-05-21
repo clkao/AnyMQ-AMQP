@@ -23,6 +23,10 @@ has _rf_queue => (is => "rw");
 
 has cv => (is => "rw", isa => "AnyEvent::CondVar");
 
+has on_ready => (is => "rw", isa => "CodeRef");
+
+has _connected => (is => "rw", isa => "Bool");
+
 sub default_amqp_spec { #this is to avoid loading coro
     my $dir = File::ShareDir::dist_dir("AnyEvent-RabbitMQ");
     return "$dir/fixed_amqp0-8.xml";
@@ -33,9 +37,40 @@ AnyEvent::RabbitMQ->load_xml_spec(default_amqp_spec());
 sub BUILD {}; after 'BUILD' => sub {
     my $self = shift;
 
+    my $cv = $self->cv(AE::cv);
+
+    $self->connect($cv);
+    my $cb; $cb = sub {
+        my $msg = $_[0]->recv;
+        if ( $msg eq 'init' ) {
+            $self->_connected(1);
+            $self->on_ready->() if $self->on_ready;
+        }
+        else {
+            my $cv = AE::cv;
+            $cv->cb($cb);
+            $self->cv($cv);
+            carp "Connection failed, retrying in 5 seconds.  Reason: ".$msg;
+            my $w; $w = AnyEvent->timer(after => 5,
+                                        cb => sub {
+                                            undef $w;
+                                            $self->connect($cv);
+                                        });
+        }
+    };
+    $cv->cb($cb);
+
+    if (!$self->on_ready) {
+        while ((my $msg = $self->cv->recv) ne 'init') {};
+    }
+};
+
+sub connect {
+    my $self = shift;
+    my $cv = shift;
+
     my $rf = AnyEvent::RabbitMQ->new(timeout => 1, verbose => 0);
     $self->_rf($rf);
-    my $cv = $self->cv(AE::cv);
 
     # XXX: wrapped object with monadic method modifier
     # my $channel = run_monad { $rf->connect(....)->open_channel()->return }
@@ -72,10 +107,13 @@ sub BUILD {}; after 'BUILD' => sub {
                 on_failure => $cv,
             );
         },
+        on_close => sub {
+            # XXX: try to reconnect and reinstantiate all topics
+            warn "==> connection closed";
+        },
         on_failure => $cv,
     );
-    $cv->recv;
-};
+}
 
 sub on_consume {
     my $self = shift;

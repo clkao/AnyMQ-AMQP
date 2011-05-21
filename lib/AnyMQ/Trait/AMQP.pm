@@ -24,7 +24,7 @@ has _rf_queue => (is => "rw");
 has cv => (is => "rw", isa => "AnyEvent::CondVar");
 
 sub default_amqp_spec { #this is to avoid loading coro
-    my $dir = File::ShareDir::dist_dir("Net-RabbitFoot");
+    my $dir = File::ShareDir::dist_dir("AnyEvent-RabbitMQ");
     return "$dir/fixed_amqp0-8.xml";
 }
 

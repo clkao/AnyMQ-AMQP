@@ -25,6 +25,8 @@ before publish => sub {
 
 sub DEMOLISH {}; after 'DEMOLISH' => sub {
     my $self = shift;
+    my ($igd) = @_;
+    return if $igd;
     return if $self->publisher_only;
     $self->bus->_rf_channel->unbind_queue(
         queue       => $self->bus->_rf_queue,

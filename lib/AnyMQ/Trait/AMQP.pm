@@ -6,7 +6,7 @@ use AnyEvent;
 use AnyEvent::RabbitMQ;
 use JSON;
 use Try::Tiny;
-use Carp qw(croak);
+use Carp qw(croak carp);
 
 has host => (is => "ro", isa => "Str");
 has port => (is => "ro", isa => "Int");

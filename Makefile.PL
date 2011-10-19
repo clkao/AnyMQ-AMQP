@@ -7,6 +7,7 @@ build_requires 'Test::More';
 requires 'AnyEvent::RabbitMQ' => 1.03;
 
 auto_include_deps;
-author_tests('xt');
 auto_set_repository;
+extra_tests;
+
 WriteAll;

@@ -6,7 +6,9 @@ has publisher_only => (is => "ro", isa => "Bool");
 sub BUILD {}; after 'BUILD' => sub {
     my $self = shift;
     return if $self->publisher_only;
+
     $self->bus->_rf_channel->bind_queue(
+        exchange    => $self->bus->exchange,
         queue       => $self->bus->_rf_queue,
         routing_key => $self->name,
         on_success  => $self->bus->cv,

@@ -11,7 +11,7 @@ my $bus = AnyMQ->new_with_traits(traits => ['AMQP'],
                                  user   => 'guest',
                                  pass   => 'guest',
                                  vhost  => '/',
-                                 exchange => '',
+                                 exchange => 'foo',
                              );
 
 my $bus2 = AnyMQ->new_with_traits(traits => ['AMQP'],
@@ -20,7 +20,7 @@ my $bus2 = AnyMQ->new_with_traits(traits => ['AMQP'],
                                  user   => 'guest',
                                  pass   => 'guest',
                                  vhost  => '/',
-                                 exchange => '',
+                                 exchange => 'foo',
                              );
 
 my $ext_channel = $bus2->_rf_channel;
@@ -58,6 +58,7 @@ $client->poll( sub {
 
 # messages coming to the exchange should be bound to our queue
 $ext_channel->publish( routing_key => 'test_q',
+                       exchange => 'foo',
                        body => JSON::to_json({ time => time() }),
                    ) for 1..10;
 

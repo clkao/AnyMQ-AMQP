@@ -77,6 +77,27 @@ sub connect {
     # my $queue = run_monad { $channel->declare_queue(....)->return }->method_frame->queue;
     # run_monad { $channel->consume( ....) }
 
+    my $init = sub {
+        my $channel = shift;
+        $channel->declare_queue(
+            exclusive => 1,
+            on_success => sub {
+                my $method = shift;
+                my $queue = $method->method_frame->queue;
+                $self->_rf_queue($queue);
+                $channel->consume(queue => $queue,
+                                  no_ack => 1,
+                                  on_success => sub {
+                                      $cv->send('init');
+                                  },
+                                  on_consume => $self->on_consume,
+                                  on_failure => $cv,
+                              );
+            },
+            on_failure => $cv,
+        )
+    };
+
     $rf->connect(
         (map { $_ => $self->$_ }
              qw(host port user pass vhost)),
@@ -86,23 +107,17 @@ sub connect {
                     my $channel = shift;
                     $self->_rf_channel($channel);
                     $channel->qos();
-                    $channel->declare_queue(
-                        exclusive => 1,
-                        on_success => sub {
-                            my $method = shift;
-                            my $queue = $method->method_frame->queue;
-                            $self->_rf_queue($queue);
-                            $channel->consume(queue => $queue,
-                                              no_ack => 1,
-                                              on_success => sub {
-                                                  $cv->send('init');
-                                              },
-                                              on_consume => $self->on_consume,
-                                              on_failure => $cv,
-                                          );
-                        },
+                    return $init->($channel)
+                        unless $self->exchange;
+
+                    $channel->declare_exchange(
+                        type => 'topic',
+                        exchange => $self->exchange,
                         on_failure => $cv,
-                    ),
+                        on_success => sub {
+                            $init->($channel);
+                        },
+                    );
                 },
                 on_failure => $cv,
             );

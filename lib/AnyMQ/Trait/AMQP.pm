@@ -139,7 +139,7 @@ sub on_consume {
         return if $reply_to && $reply_to eq $self->_rf_queue;
         my $topic = $frame->{deliver}->method_frame->routing_key;
         try { $self->topics->{$topic}->AnyMQ::Topic::publish(JSON::from_json($payload)) }
-        catch { croak "failed to publsih: $_" };
+        catch { croak "failed to republsih on $topic: $_" };
     };
 }
 

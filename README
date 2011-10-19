@@ -1,11 +1,22 @@
 NAME
-    AnyMQ::AMQP -
+    AnyMQ::AMQP - AMQP binding for AnyMQ
 
 SYNOPSIS
-      use AnyMQ::AMQP;
+      use AnyMQ;
+      my $bus = AnyMQ->new_with_traits(traits => ['AMQP'],
+                                       host   => 'localhost',
+                                       port   => 5672,
+                                       user   => 'guest',
+                                       pass   => 'guest',
+                                       vhost  => '/',
+                                       exchange => 'foo',
+                                   );
+      my $client = $bus->new_listener($bus->topic("foo"));
+      $client->poll(sub { my $msg = shift;
+                        });
 
 DESCRIPTION
-    AnyMQ::AMQP is
+    AnyMQ::AMQP is AnyMQ trait to work with AMQP servers.
 
 AUTHOR
     Chia-liang Kao <clkao@clkao.org>

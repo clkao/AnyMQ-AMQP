@@ -2,7 +2,7 @@ package AnyMQ::AMQP;
 
 use strict;
 use 5.008_001;
-our $VERSION = '0.01';
+our $VERSION = '0.30';
 
 1;
 __END__
@@ -13,15 +13,26 @@ __END__
 
 =head1 NAME
 
-AnyMQ::AMQP -
+AnyMQ::AMQP - AMQP binding for AnyMQ
 
 =head1 SYNOPSIS
 
-  use AnyMQ::AMQP;
+  use AnyMQ;
+  my $bus = AnyMQ->new_with_traits(traits => ['AMQP'],
+                                   host   => 'localhost',
+                                   port   => 5672,
+                                   user   => 'guest',
+                                   pass   => 'guest',
+                                   vhost  => '/',
+                                   exchange => 'foo',
+                               );
+  my $client = $bus->new_listener($bus->topic("foo"));
+  $client->poll(sub { my $msg = shift;
+                    });
 
 =head1 DESCRIPTION
 
-AnyMQ::AMQP is
+AnyMQ::AMQP is L<AnyMQ> trait to work with AMQP servers.
 
 =head1 AUTHOR
 

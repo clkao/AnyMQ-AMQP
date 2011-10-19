@@ -13,6 +13,7 @@ SYNOPSIS
                                    );
       my $client = $bus->new_listener($bus->topic("foo"));
       $client->poll(sub { my $msg = shift;
+                          # ...
                         });
 
 DESCRIPTION

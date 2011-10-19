@@ -28,6 +28,7 @@ AnyMQ::AMQP - AMQP binding for AnyMQ
                                );
   my $client = $bus->new_listener($bus->topic("foo"));
   $client->poll(sub { my $msg = shift;
+                      # ...
                     });
 
 =head1 DESCRIPTION

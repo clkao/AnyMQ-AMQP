@@ -123,8 +123,40 @@ sub connect {
             );
         },
         on_close => sub {
-            # XXX: try to reconnect and reinstantiate all topics
-            warn "==> connection closed";
+            AE::log error => "connection closed";
+            my $cv = $self->AE::cv;
+
+            my $cb; $cb = sub {
+                my $msg = $_[0]->recv;
+                if ( $msg eq 'init' ) {
+                    AE::log info => "reconnected";
+                    for (keys %{$self->topics}) {
+                        my $topic = $self->topics->{$_};
+                        next if $topic->publisher_only;
+                        $self->topics->{$_} = $topic->meta->new_object(%$topic);
+                        AE::log info => "rebinding topic $_";
+                    }
+                }
+                else {
+                    my $cv = AE::cv;
+                    $cv->cb($cb);
+                    $self->cv($cv);
+                    carp "Connection failed, retrying in 5 seconds.  Reason: ".$msg;
+                    my $w; $w = AnyEvent->timer(after => 5,
+                                                cb => sub {
+                                                    undef $w;
+                                                    $self->connect($cv);
+                                                });
+                }
+            };
+            $cv->cb($cb);
+
+            my $w; $w = AnyEvent->timer(after => 5,
+                                        cb => sub {
+                                            undef $w;
+                                            $self->connect($cv);
+                                        });
+
         },
         on_failure => $cv,
     );

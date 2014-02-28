@@ -31,6 +31,7 @@ sub DEMOLISH {}; after 'DEMOLISH' => sub {
     return if $igd;
     return if $self->publisher_only;
     $self->bus->_rf_channel->unbind_queue(
+        exchange    => $self->bus->exchange,
         queue       => $self->bus->_rf_queue,
         routing_key => $self->name,
         on_success  => $self->bus->cv,
